@@ -1,0 +1,19 @@
+name: terraresin_database
+description: Database and Supabase access layer for TerraResin applications.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.3
+
+resolution: workspace
+
+dependencies:
+  supabase: ^2.9.0
+  supabase_flutter: ^2.17.2
+  terraresin_core: ^0.1.0
+  terraresin_shared_models: ^0.1.0
+
+dev_dependencies:
+  test: ^1.26.3
+  lints: ^6.0.0

@@ -1,0 +1,15 @@
+name: terraresin_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.13.3
+
+dev_dependencies:
+  melos: ^8.7.0
+
+workspace:
+  - apps/expenditure
+  - packages/core
+  - packages/database
+  - packages/design_system
+  - packages/shared_models

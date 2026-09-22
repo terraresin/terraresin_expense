@@ -1,0 +1,19 @@
+name: terraresin_design_system
+description: TerraResin shared design system and UI components.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.3
+  flutter: ">=3.47.4"
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^6.0.0

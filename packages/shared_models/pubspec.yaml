@@ -1,0 +1,16 @@
+name: terraresin_shared_models
+description: Shared domain models for TerraResin applications.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.3
+
+resolution: workspace
+
+dependencies:
+  meta: ^1.17.0
+
+dev_dependencies:
+  test: ^1.26.3
+  lints: ^6.0.0

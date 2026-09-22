@@ -1,0 +1,15 @@
+name: terraresin
+
+packages:
+  - apps/**
+  - packages/**
+
+scripts:
+  analyze:
+    run: melos exec -- flutter analyze
+
+  test:
+    run: melos exec -- flutter test
+
+  format:
+    run: melos exec -- dart format .
