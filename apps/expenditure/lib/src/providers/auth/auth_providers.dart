@@ -13,10 +13,12 @@ final currentUserProvider = StreamProvider<User?>((ref) {
 });
 
 Stream<User?> _authenticatedUsers(AuthRepository repository) async* {
-  if (repository.currentSession != null) {
+  final cachedSession = repository.currentSession;
+  if (cachedSession != null) {
+    yield cachedSession.user;
+
     try {
-      final session = await repository.refreshSession();
-      yield session?.user;
+      await repository.refreshSession().timeout(const Duration(seconds: 5));
     } catch (_) {
       await repository.signOut();
       yield null;

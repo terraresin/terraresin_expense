@@ -15,6 +15,8 @@ class DesktopLayout extends StatefulWidget {
 
 class _DesktopLayoutState extends State<DesktopLayout> {
   int selectedIndex = 0;
+  ReportKind _selectedReport = ReportKind.expenditure;
+  bool _reportsExpanded = false;
 
   static const navigationItems = [
     _NavigationItem(
@@ -121,6 +123,10 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   ) {
     final isSelected = selectedIndex == index;
 
+    if (index == 3) {
+      return _buildReportsMenu(context, item);
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: ListTile(
@@ -148,6 +154,50 @@ class _DesktopLayoutState extends State<DesktopLayout> {
           });
         },
       ),
+    );
+  }
+
+  Widget _buildReportsMenu(BuildContext context, _NavigationItem item) {
+    final isSelected = selectedIndex == 3;
+
+    return ExpansionTile(
+      initiallyExpanded: _reportsExpanded,
+      onExpansionChanged: (expanded) {
+        setState(() {
+          _reportsExpanded = expanded;
+          if (expanded) selectedIndex = 3;
+        });
+      },
+      leading: Icon(
+        isSelected ? item.selectedIcon : item.icon,
+        color: isSelected
+            ? TerraResinColors.primary
+            : Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      title: Text(
+        item.label,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          color: isSelected
+              ? TerraResinColors.primary
+              : Theme.of(context).colorScheme.onSurface,
+        ),
+      ),
+      children: ReportKind.values
+          .map(
+            (report) => ListTile(
+              contentPadding: const EdgeInsets.only(left: 52, right: 12),
+              selected: isSelected && _selectedReport == report,
+              title: Text(report.title),
+              onTap: () {
+                setState(() {
+                  selectedIndex = 3;
+                  _selectedReport = report;
+                });
+              },
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -179,7 +229,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
         content = const FinanceMastersScreen();
         break;
       case 3:
-        content = const FinanceReportsScreen();
+        content = FinanceReportsScreen(initialReport: _selectedReport);
         break;
       default:
         content = Center(

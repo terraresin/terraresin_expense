@@ -52,7 +52,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               for (final t in filteredTransactions) {
                 final amount = (t['amount'] as num?)?.toDouble() ?? 0.0;
                 final direction = t['direction'] as String? ?? 'debit';
-                final type = t['transaction_type'] as String? ?? '';
                 final pMethod = t['payment_method'] as String? ?? '';
                 final categoryData = t['categories'];
                 final categoryType = categoryData is Map
@@ -69,7 +68,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   totalExpenses += amount;
                 }
 
-                if (type == 'founder_contribution') {
+                if (_isFounderContribution(t)) {
                   founderContributions += amount;
                 }
 
@@ -103,9 +102,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 for (final name in founderNamesById.values) name: 0,
               };
               for (final t in filteredTransactions) {
-                final type = t['transaction_type'] as String? ?? '';
                 final founderId = t['founder_id'] as String?;
-                if (type == 'founder_contribution' && founderId != null) {
+                if (_isFounderContribution(t) && founderId != null) {
                   final founderName = founderNamesById[founderId];
                   if (founderName == null) continue;
                   final amt = (t['amount'] as num?)?.toDouble() ?? 0.0;
@@ -315,9 +313,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                         const SizedBox(height: 24),
 
-                        _buildCategorySummaryCard(categoryMap),
-                        const SizedBox(height: 24),
-
                         // Master Accounts & Contribution Aggregations Side-by-Side
                         if (isDesktop)
                           Row(
@@ -337,6 +332,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           const SizedBox(height: 24),
                           _buildFounderContributionsSection(founderMap),
                         ],
+                        const SizedBox(height: 24),
+
+                        _buildCategorySummaryCard(categoryMap),
                         const SizedBox(height: 24),
 
                         // Recent Transactions Journal Ledger
@@ -406,6 +404,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       }
       return true;
     }).toList();
+  }
+
+  bool _isFounderContribution(Map<String, dynamic> transaction) {
+    return transaction['transaction_type'] == 'founder_contribution';
   }
 
   Widget _buildMetricCard(

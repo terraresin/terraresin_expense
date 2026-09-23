@@ -24,7 +24,8 @@ class TransactionRepository {
           )
         ''')
         .eq('organization_id', organizationId)
-        .order('transaction_date', ascending: false);
+        .order('transaction_date', ascending: false)
+        .order('created_at');
 
     final rawList = List<Map<String, dynamic>>.from(response);
     var transactions = rawList.map((m) => Transaction.fromMap(m)).toList();
@@ -58,7 +59,8 @@ class TransactionRepository {
           )
         ''')
         .eq('organization_id', organizationId)
-        .order('transaction_date', ascending: false);
+        .order('transaction_date', ascending: false)
+        .order('created_at');
 
     var transactions = List<Map<String, dynamic>>.from(response);
 
@@ -103,22 +105,56 @@ class TransactionRepository {
     await _client.from('transactions').insert(fullData);
   }
 
+  Future<void> createTransactionPair({
+    required Map<String, dynamic> debit,
+    required Map<String, dynamic> credit,
+  }) async {
+    final organizationId = await _getOrganizationId();
+    final personalAccount = await _client
+        .from('accounts')
+        .select('id')
+        .eq('account_type', 'personal')
+        .eq('is_active', true)
+        .order('created_at')
+        .limit(1)
+        .maybeSingle();
+    if (personalAccount == null || personalAccount['id'] == null) {
+      throw StateError('No active personal bank account is configured.');
+    }
+
+    final personalAccountId = personalAccount['id'] as String;
+    final createdAt = DateTime.now().toUtc();
+    await _client.from('transactions').insert([
+      {
+        ...credit,
+        'account_id': personalAccountId,
+        'organization_id': organizationId,
+        'created_at': createdAt.toIso8601String(),
+      },
+      {
+        ...debit,
+        'account_id': personalAccountId,
+        'organization_id': organizationId,
+        'created_at': createdAt
+            .add(const Duration(microseconds: 1))
+            .toIso8601String(),
+      },
+    ]);
+  }
+
   Future<void> updateTransaction(String id, Map<String, dynamic> data) async {
     await _client.from('transactions').update(data).eq('id', id);
   }
 
-  Future<void> deleteTransaction(
-    String id, {
-    String reason = 'Voided by user',
-  }) async {
+  Future<void> deleteTransaction(String id) async {
+    await _client.from('transactions').delete().eq('id', id);
+  }
+
+  Future<void> deleteTransactionPair(String referenceNumber) async {
     await _client
         .from('transactions')
-        .update({
-          'status': 'void',
-          'void_reason': reason,
-          'voided_at': DateTime.now().toUtc().toIso8601String(),
-        })
-        .eq('id', id);
+        .delete()
+        .eq('reference_number', referenceNumber);
   }
 
   static String? _cachedOrganizationId;

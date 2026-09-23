@@ -10,20 +10,22 @@ import '../../formatters/currency_formatter.dart';
 import '../../providers/categories/category_providers.dart';
 import '../../providers/transactions/transaction_providers.dart';
 
-enum _ReportKind {
+enum ReportKind {
   expenditure('Expenditure Report', Icons.receipt_long_outlined),
   categoryExpense('Category-wise Expense Report', Icons.category_outlined),
   founderContribution('Founder Contribution Report', Icons.people_outline),
   salaries('Salaries & Wages Report', Icons.badge_outlined),
   transactions('Transaction Report', Icons.swap_horiz_outlined);
 
-  const _ReportKind(this.title, this.icon);
+  const ReportKind(this.title, this.icon);
   final String title;
   final IconData icon;
 }
 
 class FinanceReportsScreen extends ConsumerStatefulWidget {
-  const FinanceReportsScreen({super.key});
+  const FinanceReportsScreen({super.key, this.initialReport});
+
+  final ReportKind? initialReport;
 
   @override
   ConsumerState<FinanceReportsScreen> createState() =>
@@ -31,12 +33,27 @@ class FinanceReportsScreen extends ConsumerStatefulWidget {
 }
 
 class _FinanceReportsScreenState extends ConsumerState<FinanceReportsScreen> {
-  _ReportKind _report = _ReportKind.expenditure;
+  late ReportKind _report;
   bool _fullPeriod = true;
   DateTime _fromDate = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime _toDate = DateTime.now();
   final Set<String> _selectedCategoryIds = {};
   bool _isDownloading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _report = widget.initialReport ?? ReportKind.expenditure;
+  }
+
+  @override
+  void didUpdateWidget(covariant FinanceReportsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialReport != null &&
+        widget.initialReport != oldWidget.initialReport) {
+      _report = widget.initialReport!;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,48 +90,8 @@ class _FinanceReportsScreenState extends ConsumerState<FinanceReportsScreen> {
               ],
             );
           }
-          return Row(
-            children: [
-              _reportMenu(),
-              Expanded(child: content),
-            ],
-          );
+          return content;
         },
-      ),
-    );
-  }
-
-  Widget _reportMenu() {
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      shape: Border(right: BorderSide(color: Theme.of(context).dividerColor)),
-      child: SizedBox(
-        width: 260,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(12, 24, 12, 12),
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: Text(
-                'Reports',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-            ),
-            for (final report in _ReportKind.values)
-              ListTile(
-                selected: report == _report,
-                selectedTileColor: TerraResinColors.primary.withValues(
-                  alpha: 0.10,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                leading: Icon(report.icon),
-                title: Text(report.title),
-                onTap: () => setState(() => _report = report),
-              ),
-          ],
-        ),
       ),
     );
   }
@@ -122,10 +99,10 @@ class _FinanceReportsScreenState extends ConsumerState<FinanceReportsScreen> {
   Widget _mobileReportMenu() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: DropdownButtonFormField<_ReportKind>(
+      child: DropdownButtonFormField<ReportKind>(
         initialValue: _report,
         decoration: const InputDecoration(labelText: 'Report'),
-        items: _ReportKind.values
+        items: ReportKind.values
             .map(
               (report) =>
                   DropdownMenuItem(value: report, child: Text(report.title)),
@@ -189,7 +166,7 @@ class _FinanceReportsScreenState extends ConsumerState<FinanceReportsScreen> {
           ),
           const SizedBox(height: 20),
           _periodFilters(),
-          if (_report == _ReportKind.categoryExpense) ...[
+          if (_report == ReportKind.categoryExpense) ...[
             const SizedBox(height: 16),
             _categoryFilters(expenseCategories),
           ],
@@ -429,18 +406,18 @@ class _FinanceReportsScreenState extends ConsumerState<FinanceReportsScreen> {
           ? category['category_type'] as String? ?? ''
           : '';
       return switch (_report) {
-        _ReportKind.expenditure =>
+        ReportKind.expenditure =>
           transaction['direction'] == 'debit' && categoryType == 'Expense',
-        _ReportKind.categoryExpense =>
+        ReportKind.categoryExpense =>
           transaction['direction'] == 'debit' &&
               categoryType == 'Expense' &&
               (_selectedCategoryIds.isEmpty ||
                   _selectedCategoryIds.contains(transaction['category_id'])),
-        _ReportKind.founderContribution =>
+        ReportKind.founderContribution =>
           transaction['transaction_type'] == 'founder_contribution' &&
               transaction['founder_id'] != null,
-        _ReportKind.salaries => categoryName == 'Salaries & Wages',
-        _ReportKind.transactions => true,
+        ReportKind.salaries => categoryName == 'Salaries & Wages',
+        ReportKind.transactions => true,
       };
     }).toList();
     rows.sort((left, right) => _date(right).compareTo(_date(left)));

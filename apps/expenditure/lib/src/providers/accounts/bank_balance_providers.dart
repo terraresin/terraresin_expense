@@ -13,8 +13,10 @@ class BankBalance {
 final companyBankBalancesProvider = FutureProvider<List<BankBalance>>((
   ref,
 ) async {
-  final accounts = await ref.watch(companyBankAccountsProvider.future);
-  final transactions = await ref.watch(transactionsProvider.future);
+  final accountsFuture = ref.watch(companyBankAccountsProvider.future);
+  final transactionsFuture = ref.watch(transactionsProvider.future);
+  final accounts = await accountsFuture;
+  final transactions = await transactionsFuture;
 
   final balances = <BankBalance>[];
 

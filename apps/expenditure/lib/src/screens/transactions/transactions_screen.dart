@@ -67,7 +67,6 @@ class TransactionsScreen extends ConsumerWidget {
             DataColumn(label: Text('Debit / Credit')),
             DataColumn(label: Text('Amount'), numeric: true),
             DataColumn(label: Text('Bank Account')),
-            DataColumn(label: Text('Payment Type')),
             DataColumn(label: Text('Party')),
             DataColumn(label: Text('Description')),
             DataColumn(label: Text('Actions')),
@@ -120,7 +119,6 @@ class TransactionsScreen extends ConsumerWidget {
           ),
         ),
         DataCell(Text(accountName)),
-        DataCell(Text(_label(transaction['payment_method'] as String? ?? ''))),
         DataCell(Text(transaction['party_name'] as String? ?? '')),
         DataCell(
           ConstrainedBox(
@@ -146,10 +144,10 @@ class TransactionsScreen extends ConsumerWidget {
                 ),
               ),
               PopupMenuItem(
-                value: 'void',
+                value: 'delete',
                 child: ListTile(
-                  leading: Icon(Icons.undo, color: Colors.orange),
-                  title: Text('Void'),
+                  leading: Icon(Icons.delete_outline, color: Colors.red),
+                  title: Text('Delete'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -174,14 +172,12 @@ class TransactionsScreen extends ConsumerWidget {
       return;
     }
 
-    if (value != 'void') return;
+    if (value != 'delete') return;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Void Transaction'),
-        content: const Text(
-          'Financial transactions should not be permanently deleted. Do you want to void this transaction?',
-        ),
+        title: const Text('Delete Transaction'),
+        content: const Text('Delete this transaction permanently?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -189,7 +185,7 @@ class TransactionsScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Void'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -198,10 +194,7 @@ class TransactionsScreen extends ConsumerWidget {
     if (confirm == true) {
       await ref
           .read(transactionRepositoryProvider)
-          .deleteTransaction(
-            transaction['id'] as String,
-            reason: 'Voided from transaction grid',
-          );
+          .deleteTransaction(transaction['id'] as String);
       ref.invalidate(transactionsProvider);
       ref.invalidate(companyBankBalancesProvider);
     }
@@ -227,15 +220,6 @@ class TransactionsScreen extends ConsumerWidget {
     }
     return 'Uncategorized';
   }
-
-  String _label(String value) => value
-      .split('_')
-      .map(
-        (part) => part.isEmpty
-            ? part
-            : '${part[0].toUpperCase()}${part.substring(1)}',
-      )
-      .join(' ');
 
   Widget _buildAddTransactionButton(BuildContext context) {
     return Align(

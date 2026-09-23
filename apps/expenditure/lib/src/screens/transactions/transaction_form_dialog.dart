@@ -18,7 +18,30 @@ class TransactionFormDialog extends ConsumerStatefulWidget {
 }
 
 class _TransactionFormDialogState extends ConsumerState<TransactionFormDialog> {
-  static const paymentTypes = ['bank_transfer', 'cash', 'cheque'];
+  static const paymentTypes = [
+    'bank_transfer',
+    'cash',
+    'cheque',
+    'founder_paid_cash',
+    'founder_paid_netbanking',
+    'founder_paid_upi',
+  ];
+
+  static const paymentTypeLabels = {
+    'bank_transfer': 'Bank Transfer',
+    'cash': 'Cash',
+    'cheque': 'Cheque',
+    'founder_paid_cash': 'Founder Paid Cash',
+    'founder_paid_netbanking': 'Founder Paid NetBanking',
+    'founder_paid_upi': 'Founder Paid UPI',
+  };
+
+  static const founderPaidCategoryNames = {
+    'Founder Paid Cash',
+    'Founder Paid NetBanking',
+    'Founder Paid UPI',
+    'Founder Paid Cash or NetBanking or UPI',
+  };
 
   static const chequeIssuerBanks = ['PNB', 'Axis Bank'];
 
@@ -35,6 +58,7 @@ class _TransactionFormDialogState extends ConsumerState<TransactionFormDialog> {
   String? _accountId;
   String? _categoryId;
   String? _founderId;
+  String _categoryName = '';
   String _categoryType = '';
   String _categoryDescription = '';
   bool _requiresFounder = false;
@@ -45,6 +69,10 @@ class _TransactionFormDialogState extends ConsumerState<TransactionFormDialog> {
   bool get isEditing => widget.transaction != null;
   bool get isCash => _paymentType == 'cash';
   bool get isCheque => _paymentType == 'cheque';
+  bool get _isFounderPaid =>
+      _paymentType.startsWith('founder_paid_') ||
+      founderPaidCategoryNames.contains(_categoryName);
+  bool get _requiresFounderSelection => _requiresFounder || _isFounderPaid;
 
   @override
   void initState() {
@@ -72,6 +100,7 @@ class _TransactionFormDialogState extends ConsumerState<TransactionFormDialog> {
     final category = transaction['categories'];
     if (category is Map) {
       final categoryName = category['name'] as String? ?? '';
+      _categoryName = categoryName;
       _categoryType = category['category_type'] as String? ?? '';
       _categoryDescription = category['description'] as String? ?? '';
       _requiresFounder = categoryName.startsWith('Founder ');
@@ -139,12 +168,14 @@ class _TransactionFormDialogState extends ConsumerState<TransactionFormDialog> {
     }
 
     try {
-      if (_requiresFounder && _founderId != null) {
+      String? founderPartyName;
+      if (_requiresFounderSelection && _founderId != null) {
         final founders = await ref.read(foundersProvider.future);
         final founder = founders
             .where((item) => item['id'] == _founderId)
             .first;
-        _partyController.text = founder['name'] as String? ?? '';
+        founderPartyName = founder['name'] as String? ?? '';
+        if (!_isFounderPaid) _partyController.text = founderPartyName;
       }
 
       final data = <String, dynamic>{
@@ -152,16 +183,18 @@ class _TransactionFormDialogState extends ConsumerState<TransactionFormDialog> {
         'transaction_type': _transactionType,
         'amount': double.parse(_amountController.text.trim()),
         'description': _descriptionController.text.trim(),
-        'account_id': isCash ? null : _accountId,
+        'account_id': isCash || _isFounderPaid ? null : _accountId,
         'payment_method': _paymentType,
         'direction': _direction,
         'party_name': _partyController.text.trim(),
         'category_id': _categoryId,
-        'founder_id': _requiresFounder ? _founderId : null,
+        'founder_id': _requiresFounderSelection ? _founderId : null,
         'project_id': null,
         'cheque_number': null,
         'cheque_date': null,
-        'reference_number': null,
+        'reference_number': _isFounderPaid && !isEditing
+            ? 'founder-paid-${DateTime.now().microsecondsSinceEpoch}'
+            : widget.transaction?['reference_number'],
         'notes': null,
       };
 
@@ -179,6 +212,27 @@ class _TransactionFormDialogState extends ConsumerState<TransactionFormDialog> {
           widget.transaction!['id'] as String,
           data,
         );
+      } else if (_isFounderPaid) {
+        await repository.createTransactionPair(
+          debit: data,
+          credit: {
+            'transaction_date': data['transaction_date'],
+            'transaction_type': 'founder_contribution',
+            'amount': data['amount'],
+            'description': 'Founder investment for ${data['description']}',
+            'account_id': null,
+            'payment_method': _paymentType,
+            'direction': 'credit',
+            'party_name': founderPartyName ?? data['party_name'],
+            'category_id': data['category_id'],
+            'founder_id': _founderId,
+            'project_id': null,
+            'cheque_number': null,
+            'cheque_date': null,
+            'reference_number': data['reference_number'],
+            'notes': 'Linked founder-paid investment',
+          },
+        );
       } else {
         await repository.createTransaction(data);
       }
@@ -189,6 +243,52 @@ class _TransactionFormDialogState extends ConsumerState<TransactionFormDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to save transaction: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _delete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Transaction'),
+        content: const Text(
+          'This permanently deletes the transaction. Founder-paid transactions delete both the investment credit and purchase debit.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final repository = ref.read(transactionRepositoryProvider);
+      final referenceNumber =
+          widget.transaction!['reference_number'] as String?;
+      if (referenceNumber?.startsWith('founder-paid-') == true) {
+        await repository.deleteTransactionPair(referenceNumber!);
+      } else {
+        await repository.deleteTransaction(widget.transaction!['id'] as String);
+      }
+      ref.invalidate(transactionsProvider);
+      ref.invalidate(companyBankBalancesProvider);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete transaction: $error')),
         );
       }
     } finally {
@@ -255,27 +355,30 @@ class _TransactionFormDialogState extends ConsumerState<TransactionFormDialog> {
                       maxLines: 2,
                     ),
                   ]),
+                if (!_isFounderPaid)
+                  _fieldRow([
+                    _textField(
+                      controller: _amountController,
+                      label: 'Amount*',
+                      numeric: true,
+                      validator: (value) {
+                        final amount = double.tryParse(value?.trim() ?? '');
+                        return amount == null || amount <= 0
+                            ? 'Enter a valid amount'
+                            : null;
+                      },
+                    ),
+                    _dropdownField<String>(
+                      label: 'Debit / Credit*',
+                      value: _direction,
+                      items: const ['debit', 'credit'],
+                      onChanged: (value) => setState(() => _direction = value!),
+                    ),
+                  ]),
                 _fieldRow([
-                  _textField(
-                    controller: _amountController,
-                    label: 'Amount*',
-                    numeric: true,
-                    validator: (value) {
-                      final amount = double.tryParse(value?.trim() ?? '');
-                      return amount == null || amount <= 0
-                          ? 'Enter a valid amount'
-                          : null;
-                    },
-                  ),
-                  _dropdownField<String>(
-                    label: 'Debit / Credit*',
-                    value: _direction,
-                    items: const ['debit', 'credit'],
-                    onChanged: (value) => setState(() => _direction = value!),
-                  ),
-                ]),
-                _fieldRow([
-                  if (isCash)
+                  if (_isFounderPaid)
+                    _readOnlyField('Bank Account', 'Personal bank account')
+                  else if (isCash)
                     _readOnlyField('Bank Account', 'Cash')
                   else
                     accounts.when(
@@ -306,11 +409,15 @@ class _TransactionFormDialogState extends ConsumerState<TransactionFormDialog> {
                     label: 'Payment Type*',
                     value: _paymentType,
                     items: paymentTypes,
-                    onChanged: (value) => setState(() => _paymentType = value!),
+                    itemLabels: paymentTypeLabels,
+                    onChanged: (value) => setState(() {
+                      _paymentType = value!;
+                      if (_isFounderPaid) _direction = 'debit';
+                    }),
                   ),
                 ]),
                 _fieldRow([
-                  _requiresFounder
+                  _requiresFounderSelection
                       ? founders.when(
                           loading: () => const LinearProgressIndicator(),
                           error: (error, stack) =>
@@ -343,6 +450,28 @@ class _TransactionFormDialogState extends ConsumerState<TransactionFormDialog> {
                           label: 'Party',
                         ),
                 ]),
+                if (_isFounderPaid)
+                  _fieldRow([
+                    _textField(
+                      controller: _partyController,
+                      label: 'Party for Debit*',
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                          ? 'Enter the party paid by the founder'
+                          : null,
+                    ),
+                    _textField(
+                      controller: _amountController,
+                      label: 'Amount*',
+                      numeric: true,
+                      validator: (value) {
+                        final amount = double.tryParse(value?.trim() ?? '');
+                        return amount == null || amount <= 0
+                            ? 'Enter a valid amount'
+                            : null;
+                      },
+                    ),
+                  ]),
                 if (isCheque)
                   _fieldRow([
                     _textField(
@@ -389,6 +518,12 @@ class _TransactionFormDialogState extends ConsumerState<TransactionFormDialog> {
         ),
       ),
       actions: [
+        if (isEditing)
+          TextButton.icon(
+            onPressed: _isLoading ? null : _delete,
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete'),
+          ),
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
@@ -557,21 +692,25 @@ class _TransactionFormDialogState extends ConsumerState<TransactionFormDialog> {
     final name = category['name'] as String? ?? '';
     setState(() {
       _categoryId = category['id'] as String?;
+      _categoryName = name;
       _categoryType = category['category_type'] as String? ?? '';
       _categoryDescription = category['description'] as String? ?? '';
       _requiresFounder = name.startsWith('Founder ');
-      if (!_requiresFounder) _founderId = null;
+      if (!_requiresFounderSelection) _founderId = null;
       _transactionType = _transactionTypeFor(name);
-      _direction = _directionFor(name, _categoryType);
+      _direction = _isFounderPaid
+          ? 'debit'
+          : _directionFor(name, _categoryType);
     });
   }
 
   void _clearCategory() {
     _categoryId = null;
+    _categoryName = '';
     _categoryType = '';
     _categoryDescription = '';
     _requiresFounder = false;
-    _founderId = null;
+    if (!_isFounderPaid) _founderId = null;
   }
 
   Widget _readOnlyField(String label, String value, {int maxLines = 1}) {

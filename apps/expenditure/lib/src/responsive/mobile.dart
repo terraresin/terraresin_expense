@@ -14,6 +14,7 @@ class MobileLayout extends StatefulWidget {
 
 class _MobileLayoutState extends State<MobileLayout> {
   int selectedIndex = 0;
+  ReportKind _selectedReport = ReportKind.expenditure;
 
   static const navigationItems = [
     _MobileNavigationItem(
@@ -56,9 +57,9 @@ class _MobileLayoutState extends State<MobileLayout> {
             tooltip: 'Notifications',
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: selectedIndex == 3 ? _showReportMenu : null,
             icon: const Icon(Icons.more_vert),
-            tooltip: 'More',
+            tooltip: 'Report options',
           ),
         ],
       ),
@@ -88,6 +89,27 @@ class _MobileLayoutState extends State<MobileLayout> {
     );
   }
 
+  Future<void> _showReportMenu() async {
+    final report = await showModalBottomSheet<ReportKind>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: ReportKind.values
+              .map(
+                (item) => ListTile(
+                  leading: Icon(item.icon),
+                  title: Text(item.title),
+                  onTap: () => Navigator.pop(context, item),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+    if (report != null && mounted) setState(() => _selectedReport = report);
+  }
+
   Widget _buildContent() {
     switch (selectedIndex) {
       case 0:
@@ -100,7 +122,7 @@ class _MobileLayoutState extends State<MobileLayout> {
         return const FinanceMastersScreen();
 
       case 3:
-        return const FinanceReportsScreen();
+        return FinanceReportsScreen(initialReport: _selectedReport);
 
       default:
         return const DashboardScreen();

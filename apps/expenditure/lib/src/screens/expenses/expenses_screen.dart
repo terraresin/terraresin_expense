@@ -116,13 +116,13 @@ class ExpensesScreen extends ConsumerWidget {
                               builder: (context) =>
                                   TransactionFormDialog(transaction: item),
                             );
-                          } else if (value == 'void') {
+                          } else if (value == 'delete') {
                             final confirm = await showDialog<bool>(
                               context: context,
                               builder: (context) => AlertDialog(
-                                title: const Text('Void Expense'),
+                                title: const Text('Delete Expense'),
                                 content: const Text(
-                                  'Financial transactions should not be permanently deleted. Do you want to void this expense?',
+                                  'Delete this expense permanently?',
                                 ),
                                 actions: [
                                   TextButton(
@@ -133,7 +133,7 @@ class ExpensesScreen extends ConsumerWidget {
                                   ElevatedButton(
                                     onPressed: () =>
                                         Navigator.of(context).pop(true),
-                                    child: const Text('Void'),
+                                    child: const Text('Delete'),
                                   ),
                                 ],
                               ),
@@ -141,10 +141,7 @@ class ExpensesScreen extends ConsumerWidget {
                             if (confirm == true) {
                               await ref
                                   .read(transactionRepositoryProvider)
-                                  .deleteTransaction(
-                                    item['id'] as String,
-                                    reason: 'Voided from expense list',
-                                  );
+                                  .deleteTransaction(item['id'] as String);
                               ref.invalidate(transactionsProvider);
                               ref.invalidate(companyBankBalancesProvider);
                             }
@@ -160,10 +157,13 @@ class ExpensesScreen extends ConsumerWidget {
                             ),
                           ),
                           const PopupMenuItem(
-                            value: 'void',
+                            value: 'delete',
                             child: ListTile(
-                              leading: Icon(Icons.undo, color: Colors.orange),
-                              title: Text('Void'),
+                              leading: Icon(
+                                Icons.delete_outline,
+                                color: Colors.red,
+                              ),
+                              title: Text('Delete'),
                               contentPadding: EdgeInsets.zero,
                             ),
                           ),
