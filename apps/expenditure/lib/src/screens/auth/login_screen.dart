@@ -118,10 +118,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
+                cursorColor: TerraResinColors.primary,
+                style: const TextStyle(color: TerraResinColors.textPrimary),
                 decoration: const InputDecoration(
                   labelText: 'Email',
                   hintText: 'Enter your email',
                   prefixIcon: Icon(Icons.email_outlined),
+                  labelStyle: TextStyle(color: TerraResinColors.textSecondary),
+                  hintStyle: TextStyle(color: TerraResinColors.textSecondary),
+                  prefixIconColor: TerraResinColors.textPrimary,
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -142,6 +147,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 controller: _passwordController,
                 obscureText: _obscurePassword,
                 textInputAction: TextInputAction.done,
+                cursorColor: TerraResinColors.primary,
+                style: const TextStyle(color: TerraResinColors.textPrimary),
                 onFieldSubmitted: (_) {
                   if (!_isLoading) {
                     _signIn();
@@ -151,6 +158,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   labelText: 'Password',
                   hintText: 'Enter your password',
                   prefixIcon: const Icon(Icons.lock_outline),
+                  labelStyle: const TextStyle(
+                    color: TerraResinColors.textSecondary,
+                  ),
+                  hintStyle: const TextStyle(
+                    color: TerraResinColors.textSecondary,
+                  ),
+                  prefixIconColor: TerraResinColors.textPrimary,
                   suffixIcon: IconButton(
                     onPressed: () {
                       setState(() {
@@ -162,6 +176,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined,
                     ),
+                    color: TerraResinColors.textPrimary,
                   ),
                 ),
                 validator: (value) {
