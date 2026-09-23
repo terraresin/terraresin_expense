@@ -39,10 +39,14 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          flutter build web --release \
+          flutter build web --release --no-tree-shake-icons \
             --base-href /terraresin_expense/ \
+            --pwa-strategy=none \
             --dart-define=SUPABASE_URL=$SUPABASE_URL \
             --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+
+      - name: Verify web font assets
+        run: test -s apps/expenditure/build/web/assets/fonts/MaterialIcons-Regular.otf
 
       - uses: actions/upload-pages-artifact@v3
         with:
