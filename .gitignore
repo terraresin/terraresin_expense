@@ -61,3 +61,10 @@ coverage/
 
 # Windows generated files
 **/windows/flutter/ephemeral/
+# Local database backups / restore files
+local_data.sql
+local_full.sql
+local_public_data.sql
+cloud_data.sql
+restore_*.sql
+
