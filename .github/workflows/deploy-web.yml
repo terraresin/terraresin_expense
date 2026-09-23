@@ -2,7 +2,7 @@ name: Deploy Expenditure Web to GitHub Pages
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - "apps/expenditure/**"
       - "packages/**"
@@ -21,6 +21,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -39,12 +40,9 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           flutter build web --release \
-            --base-href / \
+            --base-href /terraresin_expense/ \
             --dart-define=SUPABASE_URL=$SUPABASE_URL \
             --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
-
-      - name: Add custom domain
-        run: echo "terrarezyn.com" > apps/expenditure/build/web/CNAME
 
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -53,9 +51,11 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
