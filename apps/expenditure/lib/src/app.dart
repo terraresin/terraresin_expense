@@ -18,6 +18,7 @@ class TerraResinApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: TerraResinTheme.light,
       darkTheme: TerraResinTheme.dark,
+      themeMode: ThemeMode.light,
       home: const AuthGate(),
     );
   }
